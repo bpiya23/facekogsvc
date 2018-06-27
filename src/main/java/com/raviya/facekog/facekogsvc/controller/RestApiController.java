@@ -21,8 +21,13 @@ import com.raviya.facekog.facekogsvc.UtilBase64Image;
 import com.raviya.facekog.facekogsvc.model.FaceResponse;
 import com.raviya.facekog.facekogsvc.model.Image;
 import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.rekognition.AmazonRekognition;
 import com.amazonaws.services.rekognition.AmazonRekognitionAsyncClient;
 import com.amazonaws.services.rekognition.AmazonRekognitionClient;
+import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
 
 @RestController
 @RequestMapping("/facekog")
@@ -111,7 +116,13 @@ public class RestApiController {
 				return null;
 			}
 		};
-		AmazonRekognitionAsyncClient client = new AmazonRekognitionAsyncClient();
+		
+		AWSCredentials credentials = new ProfileCredentialsProvider().getCredentials();
+		AmazonRekognition client = AmazonRekognitionClientBuilder
+				.standard()
+				.withRegion(Regions.US_EAST_1)
+				.withCredentials(new AWSStaticCredentialsProvider(credentials))
+				.build();
 		
 		return list;
 	}
