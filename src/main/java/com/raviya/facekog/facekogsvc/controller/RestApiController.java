@@ -4,6 +4,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.raviya.facekog.facekogsvc.UtilBase64Image;
 import com.raviya.facekog.facekogsvc.model.FaceResponse;
-import com.raviya.facekog.facekogsvc.model.Image;
+import com.raviya.facekog.facekogsvc.model.ImageData;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
@@ -28,6 +30,23 @@ import com.amazonaws.services.rekognition.AmazonRekognition;
 import com.amazonaws.services.rekognition.AmazonRekognitionAsyncClient;
 import com.amazonaws.services.rekognition.AmazonRekognitionClient;
 import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
+import com.amazonaws.services.rekognition.model.DetectFacesRequest;
+
+import com.amazonaws.services.rekognition.AmazonRekognition;
+import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
+import com.amazonaws.services.rekognition.model.AmazonRekognitionException;
+import com.amazonaws.services.rekognition.model.Image;
+
+import com.amazonaws.services.rekognition.model.S3Object;
+import java.util.List;
+
+import com.amazonaws.services.rekognition.model.AgeRange;
+import com.amazonaws.services.rekognition.model.Attribute;
+import com.amazonaws.services.rekognition.model.DetectFacesRequest;
+import com.amazonaws.services.rekognition.model.DetectFacesResult;
+import com.amazonaws.services.rekognition.model.FaceDetail;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 
 @RestController
 @RequestMapping("/facekog")
@@ -40,14 +59,14 @@ public class RestApiController {
 
 	
 	@RequestMapping(value = "/faces", method = RequestMethod.POST)
-	public List<FaceResponse> post(@RequestBody Image image) {
+	public List<FaceResponse> post(@RequestBody ImageData image) {
 		//System.out.println("/POST request with " + image.toString());
 		List<FaceResponse> list = new ArrayList<FaceResponse>();
 		// save Image to C:\\server folder
 		String path = "/Users/4seasons/Documents/" + image.getName();
 		byte[] originalImage = UtilBase64Image.decoder(image.getData(), path);
 		BufferedImage img=null;
-		try {
+		/*try {
 			img = ImageIO.read(new ByteArrayInputStream(originalImage));
 			BufferedImage croppedImage = img.getSubimage(0, 0, 20, 20);
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -58,7 +77,7 @@ public class RestApiController {
 			String base64croppedImg = UtilBase64Image.encodeByteArray(imageInByte);
 			
 			
-			/*FaceResponse(String cropedData,
+			FaceResponse(String cropedData,
 					 int ageRangeLow,
 					 int ageRangeHigh,
 					 double smileConfidence,
@@ -70,7 +89,7 @@ public class RestApiController {
 					 double happyConfidence,
 					 double sadConfidence,
 					 double calmConfidence,
-					 boolean needToRetake)*/
+					 boolean needToRetake)
 			
 			FaceResponse resp = new FaceResponse(base64croppedImg,
 					 3,9,0, 0, 0,99.99,0,99,56,46,false);
@@ -87,54 +106,131 @@ public class RestApiController {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+		}*/
+		
+		
 		AWSCredentials awsCredentials = new AWSCredentials() {
 			
 			@Override
 			public String getAWSSecretKey() {
 				// TODO Auto-generated method stub
-				return null;
+				return "hGduPUTNtjzRzjKDpkDiRNKHu8RERUJmAkBzmGLJ";
 			}
 			
 			@Override
 			public String getAWSAccessKeyId() {
 				// TODO Auto-generated method stub
-				return null;
-			}
-		};
-		AWSCredentials aws = new AWSCredentials() {
-			
-			@Override
-			public String getAWSSecretKey() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-			
-			@Override
-			public String getAWSAccessKeyId() {
-				// TODO Auto-generated method stub
-				return null;
+				return "AKIAJIREQVHJIY5FZSMA";
 			}
 		};
 		
-		AWSCredentials credentials = new ProfileCredentialsProvider().getCredentials();
-		AmazonRekognition client = AmazonRekognitionClientBuilder
+		
+		//AWSCredentials credentials = new ProfileCredentialsProvider().getCredentials();
+		AmazonRekognition rekognitionClient = AmazonRekognitionClientBuilder
 				.standard()
 				.withRegion(Regions.US_EAST_1)
-				.withCredentials(new AWSStaticCredentialsProvider(credentials))
+				.withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
 				.build();
 		
+		
+		ByteBuffer bbuf = ByteBuffer.wrap(originalImage);
+		
+		//Image img = new Image().withBytes(originalImage)
+		DetectFacesRequest request = new DetectFacesRequest()
+				.withImage(new Image().withBytes(bbuf))
+			         .withAttributes(Attribute.ALL)
+			         ;
+		
+		try {
+	         DetectFacesResult result = rekognitionClient.detectFaces(request);
+	         List < FaceDetail > faceDetails = result.getFaceDetails();
+
+	         for (FaceDetail face: faceDetails) {
+	            if (request.getAttributes().contains("ALL")) {
+	            	//crop image start
+	            	img = ImageIO.read(new ByteArrayInputStream(originalImage));
+	            	 System.out.println(face.toString());
+	    			BufferedImage croppedImage = img.getSubimage(
+	    					Math.round(face.getBoundingBox().getLeft() * 10) ,
+	    					Math.round(face.getBoundingBox().getTop() * 10) ,
+	    					Math.round(face.getBoundingBox().getWidth() * 10) ,
+	    					Math.round(face.getBoundingBox().getHeight() * 10) );
+	    			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+	    			ImageIO.write( croppedImage, "png", baos );
+	    			baos.flush();
+	    			byte[] imageInByte = baos.toByteArray();
+	    			baos.close();
+	    			String base64croppedImg = UtilBase64Image.encodeByteArray(imageInByte);
+	    			//write to a file for demo
+	    			 path = "/Users/4seasons/Documents/cropped_" + image.getName();
+	    			byte[] ig1 = UtilBase64Image.decoder(base64croppedImg, path);
+	    			
+	            	// crop image end
+	    			AgeRange ageRange = face.getAgeRange();
+	    			int ageRangeLow= ageRange.getLow();
+					 int ageRangeHigh=ageRange.getHigh();
+					 double smileConfidence=face.getConfidence();
+					 double eyeGlassConfidence = face.getEyeglasses().getConfidence();
+					 double sunGlassConfidence=face.getSunglasses().getConfidence();
+					 double genderFemaleConfidence =0;
+					 double genderMaleConfidence =0; 
+					 if(face.getGender().getValue().equalsIgnoreCase("female"))
+					  genderFemaleConfidence = face.getGender().getConfidence();
+					 else
+					  genderMaleConfidence =face.getGender().getConfidence(); 
+
+					 double happyConfidence = 0;
+					 double sadConfidence = 0;
+					 double calmConfidence = 0;
+					 boolean needToRetake = false;
+					 if(face.getConfidence() <90)
+					  needToRetake = true;
+					 
+	    			FaceResponse resp = new FaceResponse(base64croppedImg,
+	    					 ageRangeLow,
+	   					  ageRangeHigh,
+	   					  smileConfidence,
+	   					  eyeGlassConfidence,
+	   					  sunGlassConfidence,
+	   					  genderFemaleConfidence,
+	   					  genderMaleConfidence,
+
+	   					  happyConfidence,
+	   					  sadConfidence,
+	   					  calmConfidence,
+	   					  needToRetake);
+	    			
+	    			list.add(resp);
+	    			
+	               System.out.println("The detected face is estimated to be between "
+	                  + ageRange.getLow().toString() + " and " + ageRange.getHigh().toString()
+	                  + " years old.");
+	               System.out.println("Here's the complete set of attributes:");
+	              
+	            } else { // non-default attributes have null values.
+	               System.out.println("Here's the default set of attributes:");
+	            }
+
+	            
+	         }
+
+	      } catch (AmazonRekognitionException e) {
+	         e.printStackTrace();
+	      } catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return list;
 	}
  
 	@RequestMapping(value = "/getface", method = RequestMethod.GET)
-	public Image get(@RequestParam("name") String name) {
+	public ImageData get(@RequestParam("name") String name) {
 		System.out.println(String.format("/GET info: imageName = %s", name));
 		String imagePath = "C:\\server\\" + name;
 		String imageBase64 = UtilBase64Image.encoder(imagePath);
 		
 		if(imageBase64 != null){
-			Image image = new Image(name, imageBase64);
+			ImageData image = new ImageData(name, imageBase64);
 			return image;
 		}
 		return null;

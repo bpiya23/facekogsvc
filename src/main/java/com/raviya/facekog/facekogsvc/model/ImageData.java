@@ -1,14 +1,14 @@
 package com.raviya.facekog.facekogsvc.model;
 
-public class Image {
+public class ImageData {
 	private String name;
 	private String data;
 	
-	public Image(){
+	public ImageData(){
 	}
 	
 	
-	public Image(String name, String data){
+	public ImageData(String name, String data){
 		this.name = name;
 		this.data = data;
 	}
